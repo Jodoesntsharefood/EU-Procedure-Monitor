@@ -1,0 +1,46 @@
+name: Monitor EU Procedure
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: |
+          pip install -r requirements.txt
+
+      - run: |
+          playwright install chromium
+
+      - name: Run monitor
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          TO_EMAILS: ${{ secrets.TO_EMAILS }}
+        run: |
+          python monitor.py
+
+      - name: Commit updated status
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email actions@github.com
+
+          git add last_status.json
+
+          git diff --cached --quiet || git commit -m "Update status"
+
+          git push
